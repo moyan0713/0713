@@ -12,6 +12,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+import git
+import datetime
 from interactive import (
     select_fields, 
     get_field_selectors, 
@@ -22,6 +24,61 @@ from interactive import (
 
 app = Flask(__name__)
 CORS(app)
+
+# Git仓库配置
+GIT_REPO_PATH = os.path.dirname(os.path.abspath(__file__))
+COMMIT_MESSAGE_PREFIX = "自动更新: "
+
+def init_git_repo():
+    """初始化或获取Git仓库"""
+    try:
+        repo = git.Repo(GIT_REPO_PATH)
+        print("Git仓库已存在")
+        return repo
+    except git.exc.InvalidGitRepositoryError:
+        print("初始化新的Git仓库")
+        return git.Repo.init(GIT_REPO_PATH)
+
+def auto_commit_changes(message=""):
+    """自动提交更改到Git仓库"""
+    try:
+        repo = init_git_repo()
+        
+        # 检查是否有更改
+        if not repo.is_dirty(untracked_files=True):
+            return {"status": "success", "message": "没有需要提交的更改"}
+
+        # 添加所有更改
+        repo.git.add(all=True)
+        
+        # 生成提交信息
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        commit_message = f"{COMMIT_MESSAGE_PREFIX}{message} ({timestamp})"
+        
+        # 提交更改
+        repo.index.commit(commit_message)
+        
+        # 如果有远程仓库配置，尝试推送
+        if "origin" in repo.remotes:
+            repo.remotes.origin.push()
+            return {"status": "success", "message": f"更改已提交并推送到远程仓库: {commit_message}"}
+        
+        return {"status": "success", "message": f"更改已提交到本地仓库: {commit_message}"}
+        
+    except Exception as e:
+        return {"status": "error", "message": f"Git操作失败: {str(e)}"}
+
+# 新增: Git操作API端点
+@app.route('/api/git/commit', methods=['POST'])
+def git_commit():
+    """手动触发Git提交"""
+    try:
+        data = request.json
+        message = data.get('message', '手动触发的提交')
+        result = auto_commit_changes(message)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 # 文件上传配置
 UPLOAD_FOLDER = 'uploads'
@@ -83,24 +140,46 @@ def add_good():
     amount = data['unit_price'] * data['quantity']
     conn = sqlite3.connect('goods.db')
     c = conn.cursor()
-    c.execute('''
-        INSERT INTO goods (name, category, unit_price, quantity, amount)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (data['name'], data['category'], data['unit_price'], data['quantity'], amount))
-    conn.commit()
-    new_id = c.lastrowid
-    conn.close()
-    return jsonify({'id': new_id, **data, 'amount': amount}), 201
+    try:
+        c.execute('''
+            INSERT INTO goods (name, category, unit_price, quantity, amount)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (data['name'], data['category'], data['unit_price'], data['quantity'], amount))
+        conn.commit()
+        new_id = c.lastrowid
+        
+        # 自动提交到Git
+        auto_commit_changes(f"添加新货物: {data['name']}")
+        
+        return jsonify({'id': new_id, **data, 'amount': amount}), 201
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
 
 # 删除货物
 @app.route('/api/goods/<int:id>', methods=['DELETE'])
 def delete_good(id):
     conn = sqlite3.connect('goods.db')
     c = conn.cursor()
-    c.execute('DELETE FROM goods WHERE id = ?', (id,))
-    conn.commit()
-    conn.close()
-    return '', 204
+    try:
+        # 获取要删除的货物信息用于提交信息
+        c.execute('SELECT name FROM goods WHERE id = ?', (id,))
+        good = c.fetchone()
+        
+        c.execute('DELETE FROM goods WHERE id = ?', (id,))
+        conn.commit()
+        
+        if good:
+            auto_commit_changes(f"删除货物: {good[0]}")
+        
+        return '', 204
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
 
 # 清除所有货物
 @app.route('/api/clear-goods', methods=['DELETE'])
@@ -461,6 +540,8 @@ def fetch_orders():
 
 def main():
     init_db()
+    # 初始化Git仓库
+    init_git_repo()
     app.run(debug=True, use_reloader=True, reloader_type='stat')
 
 if __name__ == '__main__':
