@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>货物金额统计系统</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- 导航菜单 -->
+    <nav class="nav">
+        <div class="nav-content">
+            <div class="nav-brand">货物金额统计系统</div>
+            <div class="nav-menu">
+                <button class="nav-item active" data-section="paste">订单数据粘贴</button>
+                <button class="nav-item" data-section="add">添加新货物</button>
+                <button class="nav-item" data-section="import">导入Excel数据</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 错误提示区域 -->
+    <div id="messageContainer" class="message-container"></div>
+
+    <!-- 主要内容区域 -->
+    <main class="main">
+        <!-- 订单数据粘贴区域 -->
+        <section id="paste-section" class="section active">
+            <div class="card">
+                <h2 class="card-title">订单数据粘贴</h2>
+                <div class="form-group">
+                    <div class="form-control">
+                        <textarea id="orderData" rows="10" placeholder=" "></textarea>
+                        <label for="orderData">请粘贴订单数据</label>
+                    </div>
+                    <div class="error-text" id="pasteError"></div>
+                    <button class="btn btn-primary" id="parseBtn">解析数据</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 添加新货物区域 -->
+        <section id="add-section" class="section">
+            <div class="card">
+                <h2 class="card-title">添加新货物</h2>
+                <form id="addForm" class="form">
+                    <div class="form-control">
+                        <input type="text" id="name" name="name" required placeholder=" ">
+                        <label for="name">货物名称</label>
+                        <div class="error-text" id="nameError"></div>
+                    </div>
+                    <div class="form-control">
+                        <select id="category" name="category" required>
+                            <option value="">请选择分类</option>
+                            <option value="大货">大货</option>
+                            <option value="日货">日货</option>
+                            <option value="第三方">第三方</option>
+                            <option value="小五金">小五金</option>
+                        </select>
+                        <label for="category">分类</label>
+                        <div class="error-text" id="categoryError"></div>
+                    </div>
+                    <div class="form-control">
+                        <input type="number" id="quantity" name="quantity" required placeholder=" ">
+                        <label for="quantity">数量</label>
+                        <div class="error-text" id="quantityError"></div>
+                    </div>
+                    <div class="form-control">
+                        <input type="number" id="unitPrice" name="unitPrice" step="0.01" required placeholder=" ">
+                        <label for="unitPrice">单价</label>
+                        <div class="error-text" id="unitPriceError"></div>
+                    </div>
+                    <div class="form-control">
+                        <input type="date" id="arrivalDate" name="arrivalDate" required placeholder=" ">
+                        <label for="arrivalDate">到货日期</label>
+                        <div class="error-text" id="arrivalDateError"></div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">添加货物</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- 导入Excel数据区域 -->
+        <section id="import-section" class="section">
+            <div class="card">
+                <h2 class="card-title">导入Excel数据</h2>
+                <div class="upload-area" id="dropZone">
+                    <div class="upload-message">
+                        <i class="upload-icon">📁</i>
+                        <p>拖拽Excel文件到此处或点击选择文件</p>
+                    </div>
+                    <input type="file" id="fileInput" accept=".xlsx,.xls" class="file-input">
+                </div>
+                <div class="file-info" id="fileInfo" style="display: none;">
+                    <span id="fileName"></span>
+                    <div class="button-group">
+                        <button class="btn btn-primary" id="uploadBtn">上传文件</button>
+                        <button class="btn btn-secondary" id="cancelBtn">取消</button>
+                    </div>
+                </div>
+                <div class="error-text" id="importError"></div>
+            </div>
+        </section>
+
+        <!-- 数据展示区域 -->
+        <section class="section">
+            <div class="card">
+                <h2 class="card-title">货物列表</h2>
+                <div class="table-container">
+                    <table id="goodsTable" class="table">
+                        <thead>
+                            <tr>
+                                <th>货物名称</th>
+                                <th>分类</th>
+                                <th>数量</th>
+                                <th>单价</th>
+                                <th>总价</th>
+                                <th>到货日期</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 数据行将通过JavaScript动态添加 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html> 
